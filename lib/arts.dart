@@ -27,28 +27,52 @@ class _ArtsPageState extends State<ArtsPage> {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('auth_token');
 
-    final response = await http.get(
-      Uri.parse('https://laravel-app-production-89a1.up.railway.app/api/products'),
-      headers: {
-        'Accept': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
-    );
+    try {
+      final response = await http.get(
+        Uri.parse('https://laravel-app-production-89a1.up.railway.app/api/products'),
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
 
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      final artsOnly = data.where((item) {
-        final category = item['category']?.toString().toLowerCase() ?? '';
-        return category == 'arts' || category == 'art';
-      }).toList();
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
 
-      setState(() {
-        products = artsOnly;
-        isLoading = false;
-      });
-    } else {
-      setState(() => isLoading = false);
-      debugPrint('❌ Failed to fetch products: ${response.statusCode}');
+        // Filter only arts products
+        final artsOnly = data.where((item) {
+          final category = item['category']?.toString().toLowerCase() ?? '';
+          return category == 'arts' || category == 'art';
+        }).toList();
+
+        // Save data locally for offline use
+        await prefs.setString('cached_arts', json.encode(artsOnly));
+
+        setState(() {
+          products = artsOnly;
+          isLoading = false;
+        });
+      } else {
+        throw Exception("Failed to fetch online");
+      }
+    } catch (e) {
+      // 📴 Offline fallback
+      final cached = prefs.getString('cached_arts');
+      if (cached != null) {
+        final cachedData = json.decode(cached);
+        setState(() {
+          products = cachedData;
+          isLoading = false;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("Offline mode: showing cached products 🗂️")),
+        );
+      } else {
+        setState(() => isLoading = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text("No internet and no cached data ❌")),
+        );
+      }
     }
   }
 
@@ -89,8 +113,7 @@ class _ArtsPageState extends State<ArtsPage> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(content: Text('${product['title']} added to cart!')),
       );
-      // Update cart counter
-      fetchCartCount();
+      fetchCartCount(); // Update cart count
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Failed to add to cart.')),
@@ -167,7 +190,9 @@ class _ArtsPageState extends State<ArtsPage> {
                     ),
                     itemBuilder: (context, index) {
                       final product = products[index];
-                      final imageUrl = product['image'] ?? 'https://via.placeholder.com/150';
+                      final imageUrl =
+                          "https://laravel-app-production-89a1.up.railway.app/storage/${product['image_url']}" ??
+                              'https://via.placeholder.com/150';
                       final name = product['title'] ?? 'Unnamed';
                       final desc = product['description'] ?? 'No description';
                       final price = product['price']?.toString() ?? 'N/A';
@@ -181,7 +206,8 @@ class _ArtsPageState extends State<ArtsPage> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             ClipRRect(
-                              borderRadius: const BorderRadius.vertical(top: Radius.circular(15)),
+                              borderRadius:
+                                  const BorderRadius.vertical(top: Radius.circular(15)),
                               child: Image.network(
                                 imageUrl,
                                 height: 120,
@@ -204,7 +230,8 @@ class _ArtsPageState extends State<ArtsPage> {
                               ),
                             ),
                             Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 8.0),
                               child: Text(
                                 desc,
                                 style: const TextStyle(
@@ -216,7 +243,8 @@ class _ArtsPageState extends State<ArtsPage> {
                               ),
                             ),
                             Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                              padding:
+                                  const EdgeInsets.symmetric(horizontal: 8.0),
                               child: Text(
                                 "Rs. $price",
                                 style: const TextStyle(
@@ -228,7 +256,8 @@ class _ArtsPageState extends State<ArtsPage> {
                             ),
                             const Spacer(),
                             Padding(
-                              padding: const EdgeInsets.symmetric(horizontal: 8.0, vertical: 4.0),
+                              padding: const EdgeInsets.symmetric(
+                                  horizontal: 8.0, vertical: 4.0),
                               child: ElevatedButton.icon(
                                 onPressed: () => addToCart(product),
                                 style: ElevatedButton.styleFrom(

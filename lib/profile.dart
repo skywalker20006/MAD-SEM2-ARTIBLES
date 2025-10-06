@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
-import 'cart.dart'; // Make sure this import points to your cart.dart file
+import 'package:shared_preferences/shared_preferences.dart';
+import 'cart.dart';
+import 'register.dart'; // <-- make sure this path matches your register.dart
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -10,6 +12,17 @@ class ProfilePage extends StatefulWidget {
 
 class _ProfilePageState extends State<ProfilePage> {
   bool isDarkMode = false;
+
+  Future<void> logout(BuildContext context) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('auth_token');
+
+    Navigator.pushAndRemoveUntil(
+      context,
+      MaterialPageRoute(builder: (context) => RegisterPage()), // <-- changed here
+      (route) => false,
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -37,6 +50,14 @@ class _ProfilePageState extends State<ProfilePage> {
                 );
               },
               child: const Text('Cart'),
+            ),
+            const SizedBox(height: 20),
+            ElevatedButton(
+              onPressed: () => logout(context),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.redAccent,
+              ),
+              child: const Text('Logout'),
             ),
           ],
         ),

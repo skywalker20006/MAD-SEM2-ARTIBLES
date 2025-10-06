@@ -98,7 +98,7 @@ class _RegisterPageState extends State<RegisterPage> {
               // Already registered button
               TextButton(
                 onPressed: () {
-                  Navigator.push(
+                  Navigator.pushReplacement( //this used to be just push and not pushReplacement
                     context,
                     MaterialPageRoute(builder: (context) => LoginPage()),
                   );
