@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'home.dart'; // basic home page
 
 class LoginPage extends StatefulWidget {
@@ -27,7 +28,26 @@ class _LoginPageState extends State<LoginPage> {
     if (response.statusCode == 200) {
       final data = json.decode(response.body);
       final token = data['token'];
-      // TODO: save token with SharedPreferences if needed
+
+      // ✅ Save token in SharedPreferences
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setString('auth_token', token);
+
+      // ✅ Just a test fetch to verify the token works (optional)
+      final prefsCheck = await SharedPreferences.getInstance();
+      final savedToken = prefsCheck.getString('auth_token');
+
+      final productResponse = await http.get(
+        Uri.parse('https://laravel-app-production-89a1.up.railway.app/api/products'),
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $savedToken',
+        },
+      );
+
+      debugPrint('Fetched products response: ${productResponse.statusCode}');
+      debugPrint(productResponse.body);
+
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Login successful!')),
       );
