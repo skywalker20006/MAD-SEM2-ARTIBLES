@@ -166,7 +166,8 @@ class _CollectiblesPageState extends State<CollectiblesPage> {
                     ),
                     itemBuilder: (context, index) {
                       final product = products[index];
-                      final imageUrl = product['image'] ?? 'https://via.placeholder.com/150';
+                      final imageUrl = "https://laravel-app-production-89a1.up.railway.app/storage/${product['image_url']}" ??
+                              'https://via.placeholder.com/150';
                       final name = product['title'] ?? 'Unnamed';
                       final desc = product['description'] ?? 'No description';
                       final price = product['price']?.toString() ?? 'N/A';

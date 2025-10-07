@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'register.dart'; // <-- import your register.dart file here
+import 'register.dart'; // 
 
 void main() {
   runApp(const MyApp());
@@ -16,7 +16,7 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
       ),
-      home: RegisterPage(), // <-- show RegisterPage instead of MyHomePage
+      home: RegisterPage(), // <-- i changed this to show the register page instead of login page
     );
   }
 }
