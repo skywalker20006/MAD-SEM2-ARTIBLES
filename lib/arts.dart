@@ -26,7 +26,7 @@ class _ArtsPageState extends State<ArtsPage> {
     fetchCartCount();
   }
 
-  // loading offline data from local json here
+  // offline data from local json here
   Future<void> loadOfflineData() async {
     try {
       final String response = await rootBundle.loadString('assets/offline_arts.json');

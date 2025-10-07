@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'cart.dart';
+import 'home.dart';
 
 class CollectiblesPage extends StatefulWidget {
   const CollectiblesPage({super.key});
@@ -104,6 +105,10 @@ class _CollectiblesPageState extends State<CollectiblesPage> {
         title: const Text('Collectibles'),
         centerTitle: true,
         backgroundColor: Colors.deepPurple,
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(48),
+          child: const NetworkStatusWidget(),
+        ),
         actions: [
           Stack(
             children: [
