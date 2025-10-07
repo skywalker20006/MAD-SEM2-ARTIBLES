@@ -3,6 +3,7 @@ import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
 import 'cart.dart';
+import 'home.dart'; 
 
 class ArtsPage extends StatefulWidget {
   const ArtsPage({super.key});
@@ -128,6 +129,10 @@ class _ArtsPageState extends State<ArtsPage> {
         title: const Text('Arts'),
         centerTitle: true,
         backgroundColor: Colors.deepPurple,
+        bottom: PreferredSize(
+          preferredSize: const Size.fromHeight(48),
+          child: const NetworkStatusWidget(),
+        ),
         actions: [
           Stack(
             children: [
