@@ -1,0 +1,44 @@
+{
+  "arts": [
+    {
+      "id": 1,
+      "title": "Abstract Canvas",
+      "description": "Modern abstract art piece",
+      "price": 2500,
+      "image_url": "products/abstract1.jpg",
+      "category": "arts"
+    },
+    {
+      "id": 2,
+      "title": "Landscape Painting",
+      "description": "Beautiful mountain scenery",
+      "price": 3500,
+      "image_url": "products/landscape1.jpg",
+      "category": "arts"
+    },
+    {
+      "id": 3,
+      "title": "Portrait Drawing",
+      "description": "Charcoal portrait artwork",
+      "price": 1800,
+      "image_url": "products/portrait1.jpg",
+      "category": "arts"
+    },
+    {
+      "id": 4,
+      "title": "Watercolor Set",
+      "description": "Collection of watercolor paintings",
+      "price": 4200,
+      "image_url": "products/watercolor1.jpg",
+      "category": "arts"
+    },
+    {
+      "id": 5,
+      "title": "Digital Art Print",
+      "description": "High-quality digital art",
+      "price": 1500,
+      "image_url": "products/digital1.jpg",
+      "category": "arts"
+    }
+  ]
+}

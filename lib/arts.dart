@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:convert';
@@ -15,13 +16,31 @@ class ArtsPage extends StatefulWidget {
 class _ArtsPageState extends State<ArtsPage> {
   List<dynamic> products = [];
   bool isLoading = true;
-  int cartCount = 0; // mini cart counter
+  bool isOffline = false;
+  int cartCount = 0;
 
   @override
   void initState() {
     super.initState();
     fetchProducts();
     fetchCartCount();
+  }
+
+  // Load offline data from local JSON
+  Future<void> loadOfflineData() async {
+    try {
+      final String response = await rootBundle.loadString('assets/offline_arts.json');
+      final data = json.decode(response);
+      
+      setState(() {
+        products = data['arts'];
+        isLoading = false;
+        isOffline = true;
+      });
+    } catch (e) {
+      debugPrint('Error loading offline data: $e');
+      setState(() => isLoading = false);
+    }
   }
 
   Future<void> fetchProducts() async {
@@ -35,7 +54,7 @@ class _ArtsPageState extends State<ArtsPage> {
           'Accept': 'application/json',
           'Authorization': 'Bearer $token',
         },
-      );
+      ).timeout(const Duration(seconds: 10));
 
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
@@ -46,32 +65,25 @@ class _ArtsPageState extends State<ArtsPage> {
           return category == 'arts' || category == 'art';
         }).toList();
 
-        // Save data locally for offline use
-        await prefs.setString('cached_arts', json.encode(artsOnly));
-
         setState(() {
           products = artsOnly;
           isLoading = false;
+          isOffline = false;
         });
       } else {
         throw Exception("Failed to fetch online");
       }
     } catch (e) {
-      // 📴 Offline fallback
-      final cached = prefs.getString('cached_arts');
-      if (cached != null) {
-        final cachedData = json.decode(cached);
-        setState(() {
-          products = cachedData;
-          isLoading = false;
-        });
+      debugPrint('Error fetching products: $e');
+      // Load offline data if API fails
+      await loadOfflineData();
+      
+      if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("Offline mode: showing cached products 🗂️")),
-        );
-      } else {
-        setState(() => isLoading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text("No internet and no cached data ❌")),
+          const SnackBar(
+            content: Text("📴 Offline mode: showing local products"),
+            backgroundColor: Colors.orange,
+          ),
         );
       }
     }
@@ -81,43 +93,63 @@ class _ArtsPageState extends State<ArtsPage> {
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('auth_token');
 
-    final response = await http.get(
-      Uri.parse('https://laravel-app-production-89a1.up.railway.app/api/cart'),
-      headers: {
-        'Accept': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
-    );
+    try {
+      final response = await http.get(
+        Uri.parse('https://laravel-app-production-89a1.up.railway.app/api/cart'),
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+      );
 
-    if (response.statusCode == 200) {
-      final data = json.decode(response.body);
-      setState(() {
-        cartCount = data.length;
-      });
+      if (response.statusCode == 200) {
+        final data = json.decode(response.body);
+        setState(() {
+          cartCount = data.length;
+        });
+      }
+    } catch (e) {
+      debugPrint('Error fetching cart count: $e');
     }
   }
 
   Future<void> addToCart(dynamic product) async {
+    if (isOffline) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Cannot add to cart in offline mode'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     final prefs = await SharedPreferences.getInstance();
     final token = prefs.getString('auth_token');
     final productId = product['id'];
 
-    final response = await http.post(
-      Uri.parse('https://laravel-app-production-89a1.up.railway.app/api/cart/add/$productId'),
-      headers: {
-        'Accept': 'application/json',
-        'Authorization': 'Bearer $token',
-      },
-    );
-
-    if (response.statusCode == 200) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('${product['title']} added to cart!')),
+    try {
+      final response = await http.post(
+        Uri.parse('https://laravel-app-production-89a1.up.railway.app/api/cart/add/$productId'),
+        headers: {
+          'Accept': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
       );
-      fetchCartCount(); // Update cart count
-    } else {
+
+      if (response.statusCode == 200) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('${product['title']} added to cart!')),
+        );
+        fetchCartCount();
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('Failed to add to cart.')),
+        );
+      }
+    } catch (e) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to add to cart.')),
+        const SnackBar(content: Text('Error: Check your connection')),
       );
     }
   }
@@ -134,6 +166,15 @@ class _ArtsPageState extends State<ArtsPage> {
           child: const NetworkStatusWidget(),
         ),
         actions: [
+          if (isOffline)
+            const Padding(
+              padding: EdgeInsets.only(right: 8.0),
+              child: Chip(
+                label: Text('Offline'),
+                backgroundColor: Colors.orange,
+                labelStyle: TextStyle(color: Colors.white, fontSize: 10),
+              ),
+            ),
           Stack(
             children: [
               IconButton(
@@ -174,114 +215,117 @@ class _ArtsPageState extends State<ArtsPage> {
           ),
         ],
       ),
-      body: isLoading
-          ? const Center(child: CircularProgressIndicator())
-          : products.isEmpty
-              ? const Center(
-                  child: Text(
-                    'No arts products found 🎨',
-                    style: TextStyle(fontSize: 18, color: Colors.grey),
-                  ),
-                )
-              : Padding(
-                  padding: const EdgeInsets.all(12.0),
-                  child: GridView.builder(
-                    itemCount: products.length,
-                    gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                      crossAxisCount: 2,
-                      mainAxisSpacing: 12,
-                      crossAxisSpacing: 12,
-                      childAspectRatio: 0.7,
+      body: RefreshIndicator(
+        onRefresh: fetchProducts,
+        child: isLoading
+            ? const Center(child: CircularProgressIndicator())
+            : products.isEmpty
+                ? const Center(
+                    child: Text(
+                      'No arts products found 🎨',
+                      style: TextStyle(fontSize: 18, color: Colors.grey),
                     ),
-                    itemBuilder: (context, index) {
-                      final product = products[index];
-                      final imageUrl =
-                          "https://laravel-app-production-89a1.up.railway.app/storage/${product['image_url']}" ??
-                              'https://via.placeholder.com/150';
-                      final name = product['title'] ?? 'Unnamed';
-                      final desc = product['description'] ?? 'No description';
-                      final price = product['price']?.toString() ?? 'N/A';
+                  )
+                : Padding(
+                    padding: const EdgeInsets.all(12.0),
+                    child: GridView.builder(
+                      itemCount: products.length,
+                      gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2,
+                        mainAxisSpacing: 12,
+                        crossAxisSpacing: 12,
+                        childAspectRatio: 0.7,
+                      ),
+                      itemBuilder: (context, index) {
+                        final product = products[index];
+                        final imageUrl =
+                            "https://laravel-app-production-89a1.up.railway.app/storage/${product['image_url']}" ??
+                                'https://via.placeholder.com/150';
+                        final name = product['title'] ?? 'Unnamed';
+                        final desc = product['description'] ?? 'No description';
+                        final price = product['price']?.toString() ?? 'N/A';
 
-                      return Card(
-                        elevation: 4,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(15),
-                        ),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            ClipRRect(
-                              borderRadius:
-                                  const BorderRadius.vertical(top: Radius.circular(15)),
-                              child: Image.network(
-                                imageUrl,
-                                height: 120,
-                                width: double.infinity,
-                                fit: BoxFit.cover,
-                                errorBuilder: (context, error, stackTrace) =>
-                                    const Icon(Icons.broken_image, size: 50),
-                              ),
-                            ),
-                            Padding(
-                              padding: const EdgeInsets.all(8.0),
-                              child: Text(
-                                name,
-                                style: const TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 8.0),
-                              child: Text(
-                                desc,
-                                style: const TextStyle(
-                                  fontSize: 13,
-                                  color: Colors.grey,
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            Padding(
-                              padding:
-                                  const EdgeInsets.symmetric(horizontal: 8.0),
-                              child: Text(
-                                "Rs. $price",
-                                style: const TextStyle(
-                                  fontSize: 14,
-                                  color: Colors.deepPurple,
-                                  fontWeight: FontWeight.w600,
+                        return Card(
+                          elevation: 4,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(15),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              ClipRRect(
+                                borderRadius:
+                                    const BorderRadius.vertical(top: Radius.circular(15)),
+                                child: Image.network(
+                                  imageUrl,
+                                  height: 120,
+                                  width: double.infinity,
+                                  fit: BoxFit.cover,
+                                  errorBuilder: (context, error, stackTrace) =>
+                                      const Icon(Icons.broken_image, size: 50),
                                 ),
                               ),
-                            ),
-                            const Spacer(),
-                            Padding(
-                              padding: const EdgeInsets.symmetric(
-                                  horizontal: 8.0, vertical: 4.0),
-                              child: ElevatedButton.icon(
-                                onPressed: () => addToCart(product),
-                                style: ElevatedButton.styleFrom(
-                                  backgroundColor: Colors.deepPurple,
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(10),
+                              Padding(
+                                padding: const EdgeInsets.all(8.0),
+                                child: Text(
+                                  name,
+                                  style: const TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
                                   ),
-                                  minimumSize: const Size.fromHeight(36),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
                                 ),
-                                icon: const Icon(Icons.add_shopping_cart, size: 18),
-                                label: const Text('Add to Cart'),
                               ),
-                            ),
-                          ],
-                        ),
-                      );
-                    },
+                              Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 8.0),
+                                child: Text(
+                                  desc,
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    color: Colors.grey,
+                                  ),
+                                  maxLines: 2,
+                                  overflow: TextOverflow.ellipsis,
+                                ),
+                              ),
+                              Padding(
+                                padding:
+                                    const EdgeInsets.symmetric(horizontal: 8.0),
+                                child: Text(
+                                  "Rs. $price",
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    color: Colors.deepPurple,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ),
+                              const Spacer(),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8.0, vertical: 4.0),
+                                child: ElevatedButton.icon(
+                                  onPressed: () => addToCart(product),
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: Colors.deepPurple,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(10),
+                                    ),
+                                    minimumSize: const Size.fromHeight(36),
+                                  ),
+                                  icon: const Icon(Icons.add_shopping_cart, size: 18),
+                                  label: const Text('Add to Cart'),
+                                ),
+                              ),
+                            ],
+                          ),
+                        );
+                      },
+                    ),
                   ),
-                ),
+      ),
     );
   }
 }

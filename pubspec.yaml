@@ -30,6 +30,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+   
   http: ^1.1.0
   shared_preferences: ^2.2.3
   connectivity_plus: ^6.0.3
@@ -60,6 +61,8 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+  assets:
+    - assets/offline_arts.json
 
   # To add assets to your application, add an assets section, like this:
   # assets:
