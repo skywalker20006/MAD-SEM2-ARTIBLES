@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'cart.dart';
-import 'register.dart'; // <-- make sure this path matches your register.dart
+import 'register.dart';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -13,13 +13,41 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> {
   bool isDarkMode = false;
 
+  @override
+  void initState() {
+    super.initState();
+    _loadThemePreference();
+  }
+
+  Future<void> _loadThemePreference() async {
+    final prefs = await SharedPreferences.getInstance();
+    setState(() {
+      isDarkMode = prefs.getBool('isDarkMode') ?? false;
+    });
+  }
+
+  Future<void> _toggleDarkMode(bool value) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('isDarkMode', value);
+    setState(() {
+      isDarkMode = value;
+    });
+
+    // Restart app theme instantly
+    final snack = SnackBar(
+      content: Text(value ? 'Dark Mode Enabled 🌙' : 'Light Mode Enabled ☀️'),
+      duration: const Duration(seconds: 1),
+    );
+    ScaffoldMessenger.of(context).showSnackBar(snack);
+  }
+
   Future<void> logout(BuildContext context) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove('auth_token');
 
     Navigator.pushAndRemoveUntil(
       context,
-      MaterialPageRoute(builder: (context) => RegisterPage()), // <-- changed here
+      MaterialPageRoute(builder: (context) => RegisterPage()),
       (route) => false,
     );
   }
@@ -35,11 +63,7 @@ class _ProfilePageState extends State<ProfilePage> {
             SwitchListTile(
               title: const Text('Dark Mode'),
               value: isDarkMode,
-              onChanged: (val) {
-                setState(() {
-                  isDarkMode = val;
-                });
-              },
+              onChanged: _toggleDarkMode,
             ),
             const SizedBox(height: 20),
             ElevatedButton(

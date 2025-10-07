@@ -26,7 +26,7 @@ class _ArtsPageState extends State<ArtsPage> {
     fetchCartCount();
   }
 
-  // Load offline data from local JSON
+  // loading offline data from local json here
   Future<void> loadOfflineData() async {
     try {
       final String response = await rootBundle.loadString('assets/offline_arts.json');
@@ -59,7 +59,7 @@ class _ArtsPageState extends State<ArtsPage> {
       if (response.statusCode == 200) {
         final data = json.decode(response.body);
 
-        // Filter only arts products
+        // filter only da arts products
         final artsOnly = data.where((item) {
           final category = item['category']?.toString().toLowerCase() ?? '';
           return category == 'arts' || category == 'art';
@@ -75,7 +75,7 @@ class _ArtsPageState extends State<ArtsPage> {
       }
     } catch (e) {
       debugPrint('Error fetching products: $e');
-      // Load offline data if API fails
+      // load offline data if the api were to  fail
       await loadOfflineData();
       
       if (mounted) {

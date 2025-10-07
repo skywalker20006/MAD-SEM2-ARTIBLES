@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'dart:convert';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'home.dart'; // basic home page
+import 'home.dart'; // make sure this contains HomePageWithTheme or HomePage
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -33,10 +33,8 @@ class _LoginPageState extends State<LoginPage> {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString('auth_token', token);
 
-      // ✅ Just a test fetch to verify the token works (optional)
-      final prefsCheck = await SharedPreferences.getInstance();
-      final savedToken = prefsCheck.getString('auth_token');
-
+      // ✅ Optional: verify the token by fetching products
+      final savedToken = prefs.getString('auth_token');
       final productResponse = await http.get(
         Uri.parse('https://laravel-app-production-89a1.up.railway.app/api/products'),
         headers: {
@@ -52,12 +50,16 @@ class _LoginPageState extends State<LoginPage> {
         const SnackBar(content: Text('Login successful!')),
       );
 
+      // ✅ Navigate to home (update this to match your class name)
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const HomePage()),
+        MaterialPageRoute(
+          builder: (context) => HomePageWithTheme(
+            toggleTheme: (bool value) {}, // empty toggle since it's from main
+            isDarkMode: false,
+          ),
+        ),
       );
-
-
     } else {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Login failed! Check credentials.')),
